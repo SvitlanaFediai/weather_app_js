@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<meta name="description" content="Starter">
+	<meta name="author" content="Svitlana Fediai">
+	<title>Weather app</title>
+
+	<link rel="icon" href="./img/favicon.png">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css">
+
+	<link rel="stylesheet" href="./style.css">
+
+	<!--[if lt IE 9]>
+	<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+</head>
+<body>
+	<div class="container">
+		<div class="main">
+			<div class="current__info">
+				<div class="current__time">12:30<span class="pm-am">PM</span></div>
+				<div class="current__date">Monday, 25 May</div>
+				<div class="current__location">
+					<i class="fas fa-map-marker-alt"></i>
+					<p class="current__location--text"></p>
+				</div>
+				<div class="current__highlights"></div>
+			</div>
+			<div class="search">
+				<form class="search__form" id="search">
+					<input type="text" id="inputSearch" placeholder="Search..." />
+					<i class="fas fa-map-marker-alt"></i>
+				</form>
+				<ul class="search__history"></ul>
+			</div>
+			
+		</div>
+		<div class="weather__forecast">
+			<div class="option">
+				<div class="option--time">
+					<!--<button type="button" class="btn weather__forecast--hourly active">Today</button>-->
+					<button type="button" class="btn weather__forecast--week active">For next days</button>
+				</div>
+				<div class="option--temp">
+					<button type="button" class="btn weather__forecast--celcius active">°C</button>
+					<button type="button" class="btn weather__forecast--fahrenheit">°F</button>
+				</div>
+			</div>
+			<div class="weather__cards"></div>
+		</div>
+	</div>
+
+	<!-- Scripts -->
+	<script src="./main.js"></script>
+</body>
+</html>
