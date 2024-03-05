@@ -24,7 +24,7 @@ const months = [
   "Nov",
   "Dec",
 ];
-const seasons = ["winter", "spring", "summer", "autumn"];
+const seasons = ["spring", "summer", "autumn", "winter"];
 
 let dateEl = document.querySelector(".current__date"),
   timeEl = document.querySelector(".current__time"),
@@ -37,7 +37,6 @@ let dateEl = document.querySelector(".current__date"),
   fahrenheitBtn = document.querySelector(".weather__forecast--fahrenheit"),
   currentWeatherContainer = document.querySelector(".current__highlights"),
   weatherCard = document.querySelector(".weather__cards"),
-  //currentUnit = 'celcius',
   historyCities = JSON.parse(localStorage.getItem("saved")) || [],
   historyCurrentWeather =
     JSON.parse(localStorage.getItem("current-weather")) || [],
@@ -51,14 +50,31 @@ let dateEl = document.querySelector(".current__date"),
 inputEl.addEventListener("keypress", (e) => {
   if (e.keyCode === 13) {
     e.preventDefault();
-    let location = inputEl.value;
-    if (location) {
-      currentCity = location;
-      getCurrentWeatherData(location);
-      getWeatherForecastForWeek(location);
-      displayWeatherForecast(location);
-      console.log(location);
-      //historyCities = JSON.parse(localStorage.getItem('saved'));
+    let currentCity = inputEl.value;
+    if (currentCity) {
+      console.log(currentCity);
+
+      currentCity = currentCity[0].toUpperCase() + currentCity.slice(1);
+      console.log(currentCity);
+      let now = Math.round(new Date().getTime() / 1000),
+        cityInList = historyCurrentWeather.filter(
+          (e) => e.name === currentCity
+        ),
+        cacheTime = JSON.parse(localStorage.getItem("timestamp")),
+        timeInterval = 7200; //2 hours * 60 sec
+
+      console.log(cityInList);
+      if (cityInList && cacheTime && cacheTime <= now - timeInterval) {
+        displayCurrentForecast(cityInList);
+        displayDailyForecast(cityInList);
+      } else {
+        localStorage.clear();
+        getCurrentWeatherData(currentCity);
+        getWeatherForecastForWeek(currentCity);
+        setCacheTime();
+        localStorage.setItem("unit", "celcius");
+        changeUnit();
+      }
     } else {
       alert("Please fill the field!");
     }
@@ -68,11 +84,14 @@ inputEl.addEventListener("keypress", (e) => {
 celciusBtn.addEventListener("click", () => {
   localStorage.setItem("unit", "celcius");
   changeUnit();
+  displayDailyForecast(currentCity);
 });
 
 fahrenheitBtn.addEventListener("click", () => {
   localStorage.setItem("unit", "fahrenheit");
   changeUnit();
+  console.log(currentCity);
+  displayDailyForecast(currentCity);
 });
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -118,9 +137,9 @@ function getDateTime() {
   timeEl.innerHTML = `${hour}:${minute}` + `<span class="pm-am">${ampm}</span>`;
 }
 
+//Get location
 function getLocation() {
   if ("geolocation" in navigator) {
-    // Prompt user for permission to access their location
     navigator.geolocation.getCurrentPosition(
       // Success callback function
       (position) => {
@@ -128,20 +147,21 @@ function getLocation() {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
         displayLocation(lat, lng);
-
-        // Do something with the location data, e.g. display on a map
         console.log(`Latitude: ${lat}, longitude: ${lng}`);
       },
-      // Error callback function
       (error) => {
         // Handle errors, e.g. user denied location sharing permissions
         console.error("Error getting user location:", error);
         displayLocation(defaultLat, defaultLng);
+        showWarning(
+          "Geolocation has not been determined, the page has loaded with default location - London"
+        );
       }
     );
   } else {
     // Geolocation is not supported by the browser
     console.error("Geolocation is not supported by this browser.");
+    showWarning("Geolocation is not supported by this browser.");
   }
 }
 
@@ -160,8 +180,7 @@ async function displayLocation(lat, lng) {
 
     getCurrentWeatherData(currentCity);
     getWeatherForecastForWeek(currentCity);
-    displayWeatherForecast(currentCity);
-    changeUnit();
+    setCacheTime();
     drawCityBtn();
   } catch (err) {
     console.error(err);
@@ -175,27 +194,16 @@ async function getCurrentWeatherData(city) {
     );
     const data = await response.json();
     setToLocaleStorageCurrentWeather(data);
+    displayCurrentForecast(data.name);
   } catch (error) {
     console.error("Error fetching data:", error);
-    if ((err = 404)) {
-      alert(
+    showWarning(error);
+    if ((error = 404)) {
+      showWarning(
         `There is ${city} not found in our database. Please, check the entered data is correct`
       );
     }
   }
-  /*.then((response) => response.json())
-  .then((data) => {
-    console.log(data.name);
-    setToLocaleStorageCurrentWeather(data);
-      //setToLocalStorageCity(data.name);
-      //displayCurrentForecast(data);
-  })
-  .catch((err) => {
-    console.error(err);
-    if(err = 404) {
-      alert(`There is ${city} not found in our database. Please, check the entered data is correct`);
-    }
-  });*/
 
   inputEl.value = "";
 }
@@ -207,47 +215,27 @@ async function getWeatherForecastForWeek(city) {
     );
     const data = await response.json();
     setToLocaleStorageDailyForecast(data);
+    console.log(data.city.name);
+    displayDailyForecast(data.city.name);
   } catch (error) {
     console.error("Error fetching data:", error);
-  }
-  /*fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${API_KEY}`)
-  .then((response) => response.json())
-  .then((data) => {
-    console.log(data, data.list, data.city.name);
-    //localStorage.setItem('daily-forecast', JSON.stringify(data));
-    setToLocaleStorageDailyForecast(data);
-    //displayDailyForecast(data);
-  })
-  .catch((err) => {
-    console.error(err);
-  });*/
-}
-
-function displayWeatherForecast(city) {
-  let now = Math.round(new Date().getTime() / 1000),
-    cacheTime = JSON.parse(localStorage.getItem("timestamp")),
-    timeInterval = 7200; //2 hours * 60 sec
-  try {
-    if (cacheTime && cacheTime <= now - timeInterval) {
-      displayCurrentForecast(city);
-      displayDailyForecast(city);
-    } else {
-      localStorage.clear();
-      getCurrentWeatherData(city);
-      getWeatherForecastForWeek(city);
-      setCacheTime();
-    }
-  } catch (error) {
-    console.error(error);
-    return;
+    showWarning(error);
   }
 }
 
 function displayCurrentForecast(city) {
   currentWeatherContainer.innerHTML = "";
 
-  let filterCity = historyCurrentWeather.filter((e) => e.name === city);
-  console.log(filterCity);
+  let filterCity = historyCurrentWeather.filter((e) => e.name === city),
+    timezone = filterCity[0].timezone,
+    sunrise = new Date((filterCity[0].sys.sunrise + timezone) * 1000)
+      .toUTCString()
+      .slice(5, 22),
+    sunset = new Date((filterCity[0].sys.sunset + timezone) * 1000)
+      .toUTCString()
+      .slice(5, 22);
+
+  console.log(filterCity, sunrise);
 
   currentLocation.textContent = `${filterCity[0].name}, ${filterCity[0].sys.country}`;
   currentWeatherContainer.innerHTML = `<h2>Current weather</h2>
@@ -257,26 +245,22 @@ function displayCurrentForecast(city) {
                                         <p>Feels like: ${filterCity[0].main.feels_like.toFixed(
                                           1
                                         )} °C</p>
-                                        <p>Sunrise: ${(
-                                          new Date(
-                                            filterCity[0].sys.sunrise * 1000
-                                          ) + ""
-                                        ).slice(16, 21)} am</p>
-                                        <p>Sunset: ${(
-                                          new Date(
-                                            filterCity[0].sys.sunset * 1000
-                                          ) + ""
-                                        ).slice(16, 21)} pm</p>
+                                        <p>Sunrise: ${sunrise} </p>
+                                        <p>Sunset: ${sunset} </p>
                                       `;
 }
 
 function displayDailyForecast(city) {
   weatherCard.innerHTML = "";
-
-  let filterCity = historyDailyForecast.filter((el) => el.city.name === city);
-  console.log(filterCity);
+  console.log(city, currentCity);
+  currentCity = city;
+  let filterCity = historyDailyForecast.filter(
+    (el) => el.city.name === currentCity
+  );
+  console.log(filterCity, historyDailyForecast[0].city.name);
 
   let arrayList = filterCity[0].list;
+  console.log(arrayList);
   for (var i = 0; i < arrayList.length; i++) {
     if (arrayList[i].dt_txt.split(" ")[1] === "12:00:00") {
       console.log(arrayList[i]);
@@ -285,15 +269,10 @@ function displayDailyForecast(city) {
         weekday = date.toLocaleDateString("en", { weekday: "long" }),
         day = date.toLocaleDateString("en", { day: "numeric", month: "short" }),
         temperature = celciusToFahrenheit(arrayList[i].main.temp),
-        //tempUnit = '°C',
         description = arrayList[i].weather[0].description,
         dayCard = document.createElement("div");
       dayCard.classList.add("weather__cards--item");
 
-      /*if (localStorage.getItem('unit') === 'fahrenheit') {
-          temperature = celciusToFahrenheit(arrayList[i].main.temp);
-          tempUnit = '°F';
-        }*/
       dayCard.innerHTML = `
                           <p class="weather__cards--day">${weekday}</p>
                           <p class="weather__cards--date">${day}</p>
@@ -304,51 +283,9 @@ function displayDailyForecast(city) {
       weatherCard.appendChild(dayCard);
     }
   }
-  /*const futureWeather = data.list.slice(8, 40);
-    console.log(futureWeather);
-    console.log(data.list.slice(0, 4));
-    futureWeather.forEach((forecast, index) => {
-      if (index % 8 === 0) {
-        
-        let date = new Date(forecast.dt * 1000),
-            weekday = date.toLocaleDateString('en', { weekday: 'long' }),
-            day = date.toLocaleDateString('en', { day: 'numeric', month: 'short' }),
-            temperature = Math.round(forecast.main.temp),
-            tempUnit = '°C',
-            description = forecast.weather[0].description,
-            dayCard = document.createElement('div');
-            dayCard.classList.add('weather__cards--item');
-            console.log(date);
-        if (currentUnit === 'fahrenheit') {
-          temperature = celciusToFahrenheit(forecast.main.temp);
-          tempUnit = '°F';
-        }
-        dayCard.innerHTML = `
-                      <p class="weather__cards--day">${weekday}</p>
-                      <p class="weather__cards--date">${day}</p>
-                      <img src="http://openweathermap.org/img/wn/${forecast.weather[0].icon}@2x.png" alt="weather icon" class="w-icon">
-                      <p class="temperature">${temperature} ${tempUnit}</p>
-                      <p class="description">${description}</p>
-                      `;
-        weatherCard.appendChild(dayCard);
-      }
-    })*/
 }
 
 function changeUnit() {
-  /*if (currentUnit !== unit) {
-    currentUnit = unit;
-
-    if (unit === 'celcius') {
-      celciusBtn.classList.add('active');
-      fahrenheitBtn.classList.remove('active');
-    } else {
-      celciusBtn.classList.remove('active');
-      fahrenheitBtn.classList.add('active');
-    }
-    weatherForecastForWeek(currentCity, currentUnit);
-  }*/
-
   if (
     localStorage.getItem("unit") === "celcius" ||
     localStorage.getItem("unit") === null
@@ -359,7 +296,7 @@ function changeUnit() {
     celciusBtn.classList.remove("active");
     fahrenheitBtn.classList.add("active");
   }
-  displayDailyForecast(currentCity);
+  console.log(currentCity);
 }
 
 function celciusToFahrenheit(temp) {
@@ -372,16 +309,6 @@ function celciusToFahrenheit(temp) {
     return temp.toFixed(1) + tempUnit;
   }
   //return ((temp * 9) / 5 + 32).toFixed(1);
-}
-
-function setToLocalStorageCity(city) {
-  if (city === null || city === undefined) {
-    return;
-  } else if (historyCities.indexOf(city) === -1) {
-    historyCities.push(city);
-    localStorage.setItem("saved", JSON.stringify(historyCities));
-    //drawCityBtn();
-  }
 }
 
 function setToLocaleStorageCurrentWeather(data) {
@@ -417,7 +344,6 @@ function setToLocaleStorageDailyForecast(data) {
 function setCacheTime() {
   let cacheTime = Math.round(new Date().getTime() / 1000);
   localStorage.setItem("timestamp", JSON.stringify(cacheTime));
-  //return cacheTime;
 }
 
 function drawCityBtn() {
@@ -450,9 +376,11 @@ function drawCityBtn() {
   console.log(cityBtnFromHistory);
   cityBtnFromHistory.forEach((element) => {
     element.addEventListener("click", function () {
-      let city = this.textContent;
-      console.log(city);
-      displayWeatherForecast(city);
+      currentCity = this.textContent;
+      console.log(currentCity);
+
+      displayCurrentForecast(currentCity);
+      displayDailyForecast(currentCity);
     });
   });
 
@@ -480,4 +408,21 @@ function deleteCityFromLocaleStorage() {
   localStorage.setItem("daily-forecast", JSON.stringify(historyDailyForecast));
 
   drawCityBtn();
+}
+
+function showWarning(message) {
+  var dialog = document.createElement("div"),
+    dialogOverlay = document.createElement("div");
+
+  dialogOverlay.className = "dialog-overlay";
+  dialog.className = "dialog";
+
+  dialog.innerHTML = `<p>${message}</p>`;
+
+  document.body.append(dialogOverlay, dialog);
+
+  setTimeout(function () {
+    dialogOverlay.remove();
+    dialog.remove();
+  }, 3000);
 }
